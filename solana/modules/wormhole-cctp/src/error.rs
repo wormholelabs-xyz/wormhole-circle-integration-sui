@@ -5,6 +5,9 @@
 
 #[anchor_lang::error_code(offset = 0)]
 pub enum WormholeCctpError {
+    #[msg("Invalid VAA account")]
+    InvalidVaa = 0xffff0000,
+
     #[msg("Cannot parse VAA payload as Wormhole CCTP message")]
     CannotParseMessage = 0xffff0001,
 

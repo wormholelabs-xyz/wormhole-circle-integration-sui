@@ -22,7 +22,7 @@ pub struct RegisterEmitterAndDomain<'info> {
     custodian: Account<'info, Custodian>,
 
     /// CHECK: We will be performing zero-copy deserialization in the instruction handler.
-    vaa: AccountInfo<'info>,
+    vaa: UncheckedAccount<'info>,
 
     #[account(
         init,

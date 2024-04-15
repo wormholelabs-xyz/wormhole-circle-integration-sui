@@ -24,7 +24,7 @@ prune_idl: node_modules ts/scripts/pruneIdlTypes.ts
 build: $(out_$(NETWORK))
 $(out_$(NETWORK)):
 ifdef out_$(NETWORK)
-	anchor build -p wormhole_circle_integration_solana --arch sbf -- --features "$(NETWORK),no-idl" -- --no-default-features
+	anchor build -- --features $(NETWORK)
 	mkdir -p $(out_$(NETWORK))
 	cp target/deploy/*.so $(out_$(NETWORK))/
 endif
