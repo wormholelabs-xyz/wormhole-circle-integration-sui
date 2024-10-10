@@ -2,17 +2,18 @@
 
 [move]
 version = 2
-manifest_digest = "3595A2518665AAC3E0B06057C98A99493185755BA0CD218952398C9BDB2CC719"
-deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
+manifest_digest = "9C5526354856545F2F60C9BEC25C1399E1B8AB65799BA121150FD8E429650C4E"
+deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
 dependencies = [
   { name = "MessageTransmitter" },
   { name = "Sui" },
   { name = "TokenMessengerMinter" },
+  { name = "Wormhole" },
 ]
 
 [[move.package]]
 name = "MessageTransmitter"
-source = { git = "https://github.com/wormholelabs-xyz/sui-cctp-private.git", rev = "master", subdir = "packages/message_transmitter" }
+source = { git = "https://github.com/circlefin/sui-cctp-private.git", rev = "d772f10", subdir = "packages/message_transmitter" }
 
 dependencies = [
   { name = "Sui" },
@@ -33,7 +34,7 @@ dependencies = [
 
 [[move.package]]
 name = "TokenMessengerMinter"
-source = { git = "https://github.com/wormholelabs-xyz/sui-cctp-private.git", rev = "master", subdir = "packages/token_messenger_minter" }
+source = { git = "https://github.com/circlefin/sui-cctp-private.git", rev = "d772f10", subdir = "packages/token_messenger_minter" }
 
 dependencies = [
   { name = "MessageTransmitter" },
@@ -43,8 +44,16 @@ dependencies = [
 ]
 
 [[move.package]]
+name = "Wormhole"
+source = { git = "https://github.com/wormhole-foundation/wormhole.git", rev = "sui/mainnet", subdir = "sui/wormhole" }
+
+dependencies = [
+  { name = "Sui" },
+]
+
+[[move.package]]
 name = "stablecoin"
-source = { git = "https://github.com/circlefin/stablecoin-sui-private.git", rev = "43f089d", subdir = "packages/stablecoin" }
+source = { git = "https://github.com/circlefin/stablecoin-sui.git", rev = "8aca6be", subdir = "packages/stablecoin" }
 
 dependencies = [
   { name = "Sui" },
@@ -53,7 +62,7 @@ dependencies = [
 
 [[move.package]]
 name = "sui_extensions"
-source = { git = "https://github.com/circlefin/stablecoin-sui-private.git", rev = "43f089d", subdir = "packages/sui_extensions" }
+source = { git = "https://github.com/circlefin/stablecoin-sui.git", rev = "8aca6be", subdir = "packages/sui_extensions" }
 
 dependencies = [
   { name = "Sui" },

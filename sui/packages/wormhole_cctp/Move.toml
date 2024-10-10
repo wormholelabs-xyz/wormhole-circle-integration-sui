@@ -8,16 +8,22 @@ edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
 rev = "a4185da5659d8d299d34e1bb2515ff1f7e32a20a"
+override = true # this allows building wormhole against the (newer) stdlib
 
 [dependencies.MessageTransmitter]
-git = "https://github.com/wormholelabs-xyz/sui-cctp-private.git"
+git = "https://github.com/circlefin/sui-cctp-private.git"
 subdir = "packages/message_transmitter"
-rev = "master"
+rev = "d772f10"
 
 [dependencies.TokenMessengerMinter]
-git = "https://github.com/wormholelabs-xyz/sui-cctp-private.git"
+git = "https://github.com/circlefin/sui-cctp-private.git"
 subdir = "packages/token_messenger_minter"
-rev = "master"
+rev = "d772f10"
+
+[dependencies.Wormhole]
+git = "https://github.com/wormhole-foundation/wormhole.git"
+subdir = "sui/wormhole"
+rev = "sui/mainnet"
 
 # For remote import, use the `{ git = "...", subdir = "...", rev = "..." }`.
 # Revision can be a branch, a tag, and a commit hash.
