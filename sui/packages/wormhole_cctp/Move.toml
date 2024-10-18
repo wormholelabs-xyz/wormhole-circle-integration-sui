@@ -13,12 +13,12 @@ override = true # this allows building wormhole against the (newer) stdlib
 [dependencies.MessageTransmitter]
 git = "https://github.com/circlefin/sui-cctp-private.git"
 subdir = "packages/message_transmitter"
-rev = "d772f10"
+rev = "ca23fd4e2074ef1b11d017a67d5ada8a7c4b082f"
 
 [dependencies.TokenMessengerMinter]
 git = "https://github.com/circlefin/sui-cctp-private.git"
 subdir = "packages/token_messenger_minter"
-rev = "d772f10"
+rev = "ca23fd4e2074ef1b11d017a67d5ada8a7c4b082f"
 
 [dependencies.Wormhole]
 git = "https://github.com/wormhole-foundation/wormhole.git"

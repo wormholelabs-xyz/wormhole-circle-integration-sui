@@ -130,8 +130,7 @@ module wormhole_cctp::deposit_tests {
     use wormhole::external_address;
 
     #[test]
-    fun test_deposit_serialization_deserialization() {
-        // Create mock data
+    fun test_deposit_roundtrip() {
         let token_address = external_address::from_address(@010101);
         let amount = 1342523u256;
         let source_cctp_domain = 1u32;
@@ -141,7 +140,6 @@ module wormhole_cctp::deposit_tests {
         let mint_recipient = external_address::from_address(@030303);
         let payload = b"Test payload";
 
-        // Create a Deposit struct
         let deposit = deposit::new(
             token_address,
             amount,
@@ -153,20 +151,21 @@ module wormhole_cctp::deposit_tests {
             payload
         );
 
-        // Serialize the deposit
-        let serialized = deposit::serialize(deposit);
 
-        // Deserialize the deposit
-        let deserialized = deposit::parse(serialized);
+        let parsed = deposit::parse(deposit.serialize());
 
-        // Assert equality for all fields
-        assert!(deposit::token_address(&deserialized) == token_address, 0);
-        assert!(deposit::amount(&deserialized) == amount, 1);
-        assert!(deposit::source_cctp_domain(&deserialized) == source_cctp_domain, 2);
-        assert!(deposit::destination_cctp_domain(&deserialized) == destination_cctp_domain, 3);
-        assert!(deposit::cctp_nonce(&deserialized) == cctp_nonce, 4);
-        assert!(deposit::burn_source(&deserialized) == burn_source, 5);
-        assert!(deposit::mint_recipient(&deserialized) == mint_recipient, 6);
-        assert!(deposit::payload(&deserialized) == payload, 7);
+        assert!(parsed.token_address() == token_address, 0);
+        assert!(parsed.amount() == amount, 1);
+        assert!(parsed.source_cctp_domain() == source_cctp_domain, 2);
+        assert!(parsed.destination_cctp_domain() == destination_cctp_domain, 3);
+        assert!(parsed.cctp_nonce() == cctp_nonce, 4);
+        assert!(parsed.burn_source() == burn_source, 5);
+        assert!(parsed.mint_recipient() == mint_recipient, 6);
+        assert!(parsed.payload() == payload, 7);
+    }
+
+    #[test]
+    fun test_deposit_from_solana () {
+        // TODO: dump the serialised payload from the solana/evm implementations and add a test here.
     }
 }

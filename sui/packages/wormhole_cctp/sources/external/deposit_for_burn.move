@@ -3,7 +3,7 @@
 /// it safe to call them from PTBs, which in turn makes it possible to integrate
 /// with the library in an upgrade-safe manner.
 ///
-/// Why?
+/// # Why?
 ///
 /// The original `deposit_for_burn` and `deposit_for_burn_with_caller` functions
 /// are version gated, meaning that they will only work when invoked from the
@@ -33,7 +33,7 @@
 /// the PTB introduced. When `my_function` calls `deposit_for_burn` directly, it
 /// can be sure that the tokens are burnt.
 ///
-/// How?
+/// # How?
 ///
 /// To solve the problem above, we need to ensure that
 /// `my_contract::my_function` can verify that it's consuming the result of an
