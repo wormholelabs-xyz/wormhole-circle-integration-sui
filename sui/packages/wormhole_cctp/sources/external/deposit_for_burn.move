@@ -1,3 +1,6 @@
+/// TODO: we should consider splitting this out as a separate standalone
+/// package. then our library can be immutable, and this package can be upgraded
+/// in a permissionless way.
 /// This module wraps the [`token_messenger_minter::deposit_for_burn`] functions
 /// (`deposit_for_burn` and `deposit_for_burn_with_caller`) in a way that makes
 /// it safe to call them from PTBs, which in turn makes it possible to integrate
@@ -76,8 +79,6 @@ module wormhole_cctp::deposit_for_burn {
         (burn_message, message)
     }
 
-    // TODO: make this package upgradeable. The only reason it should ever be
-    // upgraded is to upgrade the underlying deposit_for_burn_with_caller function.
     // TODO: introduce a function that checks that the appropriate version was
     // called for the destination chain (i.e. for a sui target we don't want the
     // _with_caller version).
