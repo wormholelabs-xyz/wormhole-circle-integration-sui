@@ -201,7 +201,11 @@ module wormhole_cctp::wormhole_cctp_tests {
         receive_message::{Self, complete_receive_message},
         send_message::auth_caller_identifier,
         state as message_transmitter_state,
+        attester_manager,
     };
+    use wormhole_cctp::wormhole_cctp;
+    use wormhole_cctp::payload;
+    use wormhole_cctp::deposit;
 
     public struct WORMHOLE_CCTP_TESTS has drop {}
 
@@ -215,26 +219,39 @@ module wormhole_cctp::wormhole_cctp_tests {
     const AMOUNT: u64 = 1214;
     const VERSION: u32 = 0;
 
+    const ATTESTER: address = @0xbeFA429d57cD18b7F8A4d91A2da9AB4AF05d0FBe;
+    const ATTESTER_SK: vector<u8> = x"cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
+
     #[test]
-    public fun test_handle_receive_message_successful() {
+    public fun test_consume_payload() {
         let mut scenario = test_scenario::begin(ADMIN);
         let (mint_cap, mut treasury, deny_list) = setup_coin(&mut scenario);
-        let (mut token_messenger_state, message_transmitter_state) = setup_cctp_states(
+        let (mut token_messenger_state, mut message_transmitter_state) = setup_cctp_states(
             mint_cap, &mut scenario
         );
 
+        let mut consumed_vaas = wormhole::consumed_vaas::new(scenario.ctx());
+
+
         scenario.next_tx(USER);
         {
-            // Get a fake receipt. In real scenarios this would be returned from receive_message.
-            let receipt = receive_message::create_receipt(
-                USER,
-                auth_caller_identifier<MessageTransmitterAuthenticator>(),
+            let cctp_nonce = 12;
+            let message = message_transmitter::message::new(
+                VERSION,
                 REMOTE_DOMAIN,
+                LOCAL_DOMAIN,
+                cctp_nonce,
                 REMOTE_TOKEN_MESSENGER,
-                12,
-                burn_message::get_raw_test_message(),
-                1
+                auth_caller_identifier<MessageTransmitterAuthenticator>(),
+                @0x0, // no destination caller!
+                burn_message::new(0, REMOTE_TOKEN, USER, AMOUNT as u256, USER).serialize()
             );
+            let sk = ATTESTER_SK;
+            let attestation = generate_attestation(
+                &sk,
+                &message.serialize(),
+            );
+            let receipt = receive_message::receive_message(message.serialize(), attestation, &mut message_transmitter_state, scenario.ctx());
 
             let stamped_receipt = handle_receive_message::handle_receive_message(
                 receipt,
@@ -247,20 +264,183 @@ module wormhole_cctp::wormhole_cctp_tests {
 
             complete_receive_message(stamped_receipt, &message_transmitter_state);
 
-            // TODO: currently it's not possible to mock a VAA. add a
-            // [test_only] method to the wormhole sui package to do that.
-            // wormhole_cctp::consume_payload()
+            let vaa = wormhole::vaa::new_test_only(
+                0, // guardian set index
+                0, // timestamp
+                0, // wh nonce
+                1, // emitter chain
+                wormhole::external_address::from_address(@0xB0B), // emitter address
+                1, // sequence
+                1, // consistency level
+                payload::new_deposit(deposit::new(
+                    wormhole::external_address::from_address(REMOTE_TOKEN),
+                    AMOUNT as u256,
+                    REMOTE_DOMAIN,
+                    LOCAL_DOMAIN,
+                    cctp_nonce,
+                    wormhole::external_address::from_address(USER),
+                    wormhole::external_address::from_address(USER),
+                    b"hello world"
+                )).serialize()
+            );
+            let (emitter_chain, emitter_address, deposit) = wormhole_cctp::consume_payload(vaa, &mut message_transmitter_state, &mut consumed_vaas);
+            assert!(emitter_chain == 1);
+            assert!(emitter_address == wormhole::external_address::from_address(@0xB0B));
+            assert!(deposit.source_cctp_domain() == REMOTE_DOMAIN);
+            assert!(deposit.cctp_nonce() == cctp_nonce);
+            assert!(deposit.amount() == AMOUNT as u256);
+            assert!(deposit.burn_source() == wormhole::external_address::from_address(USER));
+            assert!(deposit.mint_recipient() == wormhole::external_address::from_address(USER));
+            assert!(deposit.payload() == b"hello world");
         };
 
         test_utils::destroy(token_messenger_state);
         test_utils::destroy(message_transmitter_state);
         test_utils::destroy(deny_list);
         test_utils::destroy(treasury);
+        test_utils::destroy(consumed_vaas);
         scenario.end();
     }
 
-    // TODO: test replay protection
-    // TODO: test that we can't redeem a VAA if the CCTP message is not redeemed
+    #[test]
+    #[expected_failure(abort_code = wormhole::set::E_KEY_ALREADY_EXISTS)]
+    public fun test_consume_payload_replay() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        let (mint_cap, mut treasury, deny_list) = setup_coin(&mut scenario);
+        let (mut token_messenger_state, mut message_transmitter_state) = setup_cctp_states(
+            mint_cap, &mut scenario
+        );
+
+        let mut consumed_vaas = wormhole::consumed_vaas::new(scenario.ctx());
+
+
+        scenario.next_tx(USER);
+        {
+            let cctp_nonce = 12;
+            let message = message_transmitter::message::new(
+                VERSION,
+                REMOTE_DOMAIN,
+                LOCAL_DOMAIN,
+                cctp_nonce,
+                REMOTE_TOKEN_MESSENGER,
+                auth_caller_identifier<MessageTransmitterAuthenticator>(),
+                @0x0, // no destination caller!
+                burn_message::new(0, REMOTE_TOKEN, USER, AMOUNT as u256, USER).serialize()
+            );
+            let sk = ATTESTER_SK;
+            let attestation = generate_attestation(
+                &sk,
+                &message.serialize(),
+            );
+            let receipt = receive_message::receive_message(message.serialize(), attestation, &mut message_transmitter_state, scenario.ctx());
+
+            let stamped_receipt = handle_receive_message::handle_receive_message(
+                receipt,
+                &mut token_messenger_state,
+                &message_transmitter_state,
+                &deny_list,
+                &mut treasury,
+                scenario.ctx()
+            );
+
+            complete_receive_message(stamped_receipt, &message_transmitter_state);
+
+            let vaa = wormhole::vaa::new_test_only(
+                0, // guardian set index
+                0, // timestamp
+                0, // wh nonce
+                1, // emitter chain
+                wormhole::external_address::from_address(@0xB0B), // emitter address
+                1, // sequence
+                1, // consistency level
+                payload::new_deposit(deposit::new(
+                    wormhole::external_address::from_address(REMOTE_TOKEN),
+                    AMOUNT as u256,
+                    REMOTE_DOMAIN,
+                    LOCAL_DOMAIN,
+                    cctp_nonce,
+                    wormhole::external_address::from_address(USER),
+                    wormhole::external_address::from_address(USER),
+                    vector::empty(),
+                )).serialize()
+            );
+            wormhole_cctp::consume_payload(vaa, &mut message_transmitter_state, &mut consumed_vaas);
+
+            // Try to consume the same VAA again
+            let vaa = wormhole::vaa::new_test_only(
+                0, // guardian set index
+                0, // timestamp
+                0, // wh nonce
+                1, // emitter chain
+                wormhole::external_address::from_address(@0xB0B), // emitter address
+                1, // sequence
+                1, // consistency level
+                payload::new_deposit(deposit::new(
+                    wormhole::external_address::from_address(REMOTE_TOKEN),
+                    AMOUNT as u256,
+                    REMOTE_DOMAIN,
+                    LOCAL_DOMAIN,
+                    cctp_nonce,
+                    wormhole::external_address::from_address(USER),
+                    wormhole::external_address::from_address(USER),
+                    vector::empty(),
+                )).serialize()
+            );
+            wormhole_cctp::consume_payload(vaa, &mut message_transmitter_state, &mut consumed_vaas);
+        };
+
+        test_utils::destroy(token_messenger_state);
+        test_utils::destroy(message_transmitter_state);
+        test_utils::destroy(deny_list);
+        test_utils::destroy(treasury);
+        test_utils::destroy(consumed_vaas);
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = wormhole_cctp::ENonceNotClaimedYet)]
+    public fun test_consume_payload_unredeemed_cctp_message() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        let (mint_cap, treasury, deny_list) = setup_coin(&mut scenario);
+        let (token_messenger_state, mut message_transmitter_state) = setup_cctp_states(
+            mint_cap, &mut scenario
+        );
+
+        let mut consumed_vaas = wormhole::consumed_vaas::new(scenario.ctx());
+
+
+        scenario.next_tx(USER);
+        {
+            let cctp_nonce = 12;
+            let vaa = wormhole::vaa::new_test_only(
+                0, // guardian set index
+                0, // timestamp
+                0, // wh nonce
+                1, // emitter chain
+                wormhole::external_address::from_address(@0xB0B), // emitter address
+                1, // sequence
+                1, // consistency level
+                payload::new_deposit(deposit::new(
+                    wormhole::external_address::from_address(REMOTE_TOKEN),
+                    AMOUNT as u256,
+                    REMOTE_DOMAIN,
+                    LOCAL_DOMAIN,
+                    cctp_nonce,
+                    wormhole::external_address::from_address(USER),
+                    wormhole::external_address::from_address(USER),
+                    vector::empty(),
+                )).serialize()
+            );
+            wormhole_cctp::consume_payload(vaa, &mut message_transmitter_state, &mut consumed_vaas);
+        };
+
+        test_utils::destroy(token_messenger_state);
+        test_utils::destroy(message_transmitter_state);
+        test_utils::destroy(deny_list);
+        test_utils::destroy(treasury);
+        test_utils::destroy(consumed_vaas);
+        scenario.end();
+    }
 
     // === Test-Functions ===
 
@@ -312,9 +492,11 @@ module wormhole_cctp::wormhole_cctp_tests {
         let ctx = test_scenario::ctx(scenario);
 
         let mut token_messenger_state = token_messenger_state::new_for_testing(VERSION, ADMIN, ctx);
-        let message_transmitter_state = message_transmitter_state::new_for_testing(
+        let mut message_transmitter_state = message_transmitter_state::new_for_testing(
             LOCAL_DOMAIN, VERSION, 1000, ADMIN, ctx
         );
+
+        attester_manager::enable_attester(ATTESTER, &mut message_transmitter_state, ctx);
 
         remote_token_messenger::add_remote_token_messenger(
             REMOTE_DOMAIN, REMOTE_TOKEN_MESSENGER, &mut token_messenger_state, ctx
@@ -333,5 +515,17 @@ module wormhole_cctp::wormhole_cctp_tests {
         );
 
         (token_messenger_state, message_transmitter_state)
+    }
+
+    /// Generate valid cctp attestations given an attester private key and a message
+    public fun generate_attestation(private_key: &vector<u8>, message: &vector<u8>): vector<u8> {
+        // Sign the hashed message and get the recoverable signature
+        let mut signature = sui::ecdsa_k1::secp256k1_sign(private_key, message, 0, true);
+
+        // Adjust v value from 0/1 to 27/28
+        let v = vector::pop_back(&mut signature);
+        vector::push_back(&mut signature, v + 27);
+
+        signature
     }
 }
